@@ -58,7 +58,8 @@ These blocks are extracted and compiled as part of the CI test suite.
 
 ### Basic usage
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -75,7 +76,8 @@ int main() {
 
 ### Assigning `nullptr` is a compile error
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: deleted                                   <- GCC/Clang
 // MATCH-ERROR-TEXT: attempting to reference a deleted function  <- MSVC
 #define NEEDFUL_CPP_ENHANCED  1

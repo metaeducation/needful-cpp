@@ -113,7 +113,8 @@ including `needful.h` to get a built-in `const char*`-based implementation:
 
 ### Basic `trap` / `fail` / `assume` usage
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #define NEEDFUL_DECLARE_RESULT_HOOKS  1
 #include <cassert>
@@ -141,7 +142,8 @@ int main() {
 
 ### Discarding a `Result(T)` without handling it is a compile error
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: cannot convert   <- GCC, MSVC
 // MATCH-ERROR-TEXT: no viable conversion  <- Clang
 // MATCH-ERROR-TEXT: cannot initialize  <- GCC alternate

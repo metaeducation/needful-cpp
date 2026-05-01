@@ -71,7 +71,8 @@ Hooks fire only in debug builds; release builds see zero overhead.
 
 ### Basic cast usage
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -95,7 +96,8 @@ int main() {
 
 ### `m_cast` to an unrelated type is a compile error
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: upcast() cannot implicitly convert
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>

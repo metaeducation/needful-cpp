@@ -84,7 +84,8 @@ caller passes a simple variable, not an expression with side effects.
 
 ### Basic type assertion
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -106,7 +107,8 @@ int main() {
 
 ### `rigid_known` rejects a const pointer where mutable is required
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: static assertion failed  <- GCC/Clang
 // MATCH-ERROR-TEXT: static_assert            <- MSVC
 #define NEEDFUL_CPP_ENHANCED  1

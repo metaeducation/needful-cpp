@@ -43,14 +43,14 @@ passes when the compiler exits non-zero.
 
 A critical discipline: a negative test that fails due to a **typo or
 unrelated syntax error** is indistinguishable from one that fails for the
-intended reason.  To address this, every negative test file carries an
-`// EXPECT-ERROR:` comment stating a phrase that must appear in the compiler's
-error output.  This phrase should be chosen to appear in the output of all
-three target compilers (GCC, Clang, MSVC) for the specific violation being
-tested:
+intended reason.  To address this, every negative test file carries a
+`// MATCH-ERROR-TEXT:` comment stating a phrase that must appear in the
+compiler's error output.  This phrase should be chosen to appear in the output
+of all three target compilers (GCC, Clang, MSVC) for the specific violation
+being tested:
 
 ```cpp
-// EXPECT-ERROR: is not implicitly convertible
+// MATCH-ERROR-TEXT: is not implicitly convertible
 ```
 
 The `run-negative-tests.py` script enforces this: it captures the compiler's
@@ -97,21 +97,57 @@ and `=1`.  The cases where the C build silently accepts something that the C++
 enhanced build rejects are the most valuable tests to have.
 
 
+## Docs-as-Tests
+
+Negative tests are not only in `negative/` — they are also embedded directly
+in the documentation source under `docs/*.md`.  This keeps the compile-time
+example in the page that explains it, rather than in a separate file.
+
+Fenced code blocks in `docs/*.md` are tagged with an HTML comment on the
+immediately preceding line:
+
+```markdown
+<!-- doctest: positive-test -->
+```cpp
+// compiled and run; must exit 0
+```
+
+<!-- doctest: negative-test -->
+```cpp
+// MATCH-ERROR-TEXT: no viable conversion
+// must fail to compile
+```
+
+<!-- doctest: negative-test match="phrase1|phrase2" -->
+```cpp
+// match= shorthand: injected as MATCH-ERROR-TEXT comments
+```
+```
+
+The HTML comment is invisible in rendered pages; only `extract-doctests.py`
+reads it.  Run via `tools/extract-doctests.py`, which writes extracted files
+to `tests/doctest-extracted/{positive,negative}/`.  CMake runs it
+automatically at configure time when `NEEDFUL_EXTRACT_DOCTESTS=ON`.
+
+The `doctest-extracted/` directory is `.gitignore`d — it is always regenerated
+from source.
+
+
 ## Coverage Goals
 
 The constructs and their current test coverage:
 
 | Construct | Positive | Negative |
 |-----------|----------|----------|
-| `Option(T)` | test-needful-option.cpp | option-implicit-unwrap.cpp, option-bool-implicit-convert.cpp |
-| Casts (`h_cast`, `m_cast`, etc.) | test-needful-casts.cpp | mcast-unrelated-downcast.cpp |
+| `Option(T)` | test-needful-option.cpp | docs/option.md (2 blocks) |
+| Casts (`h_cast`, `m_cast`, etc.) | test-needful-casts.cpp | docs/cast.md |
 | Const metaprogramming | test-needful-const.cpp | — |
-| `Need(T)` | test-needful-need.cpp | need-assign-nullptr.cpp |
-| `Result(T)` / `trap` / `except` / `assume` / `rescue` | test-needful-result.cpp | result-discarded.cpp |
-| `known(T, expr)` / `rigid_known` / `known_any` | test-needful-known.cpp | known-rigid-wrong-type.cpp |
-| `Sink` / `Init` / `Contra` | test-needful-contra.cpp | sink-wrong-direction.cpp |
+| `Need(T)` | test-needful-need.cpp | docs/need.md |
+| `Result(T)` / `trap` / `except` / `assume` / `rescue` | test-needful-result.cpp | docs/result.md |
+| `known(T, expr)` / `rigid_known` / `known_any` | test-needful-known.cpp | docs/known.md |
+| `Sink` / `Init` / `Contra` | test-needful-contra.cpp | docs/contra.md |
 | `nocast` / `nocast_0` | test-needful-nocast.cpp | — |
-| Commentary macros (`possibly`, `dont`, etc.) | test-needful-comments.cpp | possibly-nonbool.cpp |
+| Commentary macros (`possibly`, `dont`, etc.) | test-needful-comments.cpp | docs/comments.md |
 | Corruption / `NEEDFUL_DOES_CORRUPTIONS` | — | — |
 
 

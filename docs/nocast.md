@@ -63,7 +63,8 @@ Derived* d = downcast(base_ptr);   // base -> derived (trust the programmer)
 
 ### `nocast` bridges `void*` and enum zero
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"

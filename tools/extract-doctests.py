@@ -10,18 +10,24 @@ positive or negative tests and writes them into:
 
 Supported fence tags:
 
-    ```cpp positive-test
+    <!-- doctest: positive-test -->
+    ```cpp
     // Full .cpp file content — compiled and run; must exit 0.
     ```
 
-    ```cpp negative-test
+    <!-- doctest: negative-test -->
+    ```cpp
     // Full .cpp file content — must FAIL to compile.
     // MATCH-ERROR-TEXT: phrases go here as usual
     ```
 
-    ```cpp negative-test match="phrase1|phrase2"
+    <!-- doctest: negative-test match="phrase1|phrase2" -->
+    ```cpp
     // Shorthand: match= attribute is injected as MATCH-ERROR-TEXT comments.
     ```
+
+The HTML comment must appear on the line immediately before the opening fence.
+Jekyll ignores these comments so they are invisible in rendered pages.
 
 The output directory is wiped and recreated on each run so stale files
 don't accumulate.
@@ -40,17 +46,20 @@ import sys
 from pathlib import Path
 
 
-# Matches opening fence line with test tag.
+# Matches an HTML comment carrying the doctest tag.
 # Examples:
-#   ```cpp positive-test
-#   ```c++ negative-test
-#   ```cpp negative-test match="cannot convert|no viable conversion"
-_FENCE_OPEN = re.compile(
-    r'^```(?:cpp|c\+\+)\s+'
+#   <!-- doctest: positive-test -->
+#   <!-- doctest: negative-test -->
+#   <!-- doctest: negative-test match="cannot convert|no viable conversion" -->
+_DOCTEST_COMMENT = re.compile(
+    r'^<!--\s*doctest:\s*'
     r'(?P<kind>positive|negative)-test'
     r'(?:\s+match="(?P<match>[^"]+)")?'
-    r'\s*$'
+    r'\s*-->\s*$'
 )
+
+# Matches a plain cpp/c++ opening fence (no extra attributes).
+_FENCE_OPEN = re.compile(r'^```(?:cpp|c\+\+)\s*$')
 
 # Matches the closing fence.
 _FENCE_CLOSE = re.compile(r'^```\s*$')
@@ -77,17 +86,22 @@ def extract_from_file(md_path: Path):
     match_attr = None
     block_lines = []
     block_index = 0
+    pending_tag = None   # (kind, match_attr) from preceding HTML comment
 
     for line in lines:
         stripped = line.rstrip('\n')
 
         if not in_block:
-            m = _FENCE_OPEN.match(stripped)
-            if m:
+            cm = _DOCTEST_COMMENT.match(stripped)
+            if cm:
+                pending_tag = (cm.group('kind'), cm.group('match'))
+            elif _FENCE_OPEN.match(stripped) and pending_tag is not None:
                 in_block = True
-                kind = m.group('kind')
-                match_attr = m.group('match')  # may be None
+                kind, match_attr = pending_tag
+                pending_tag = None
                 block_lines = []
+            else:
+                pending_tag = None  # any non-fence line clears the tag
         else:
             if _FENCE_CLOSE.match(stripped):
                 in_block = False
@@ -153,7 +167,12 @@ def run(docs_dir: Path, out_dir: Path, dry_run: bool) -> int:
         pos_dir.mkdir(parents=True, exist_ok=True)
         neg_dir.mkdir(parents=True, exist_ok=True)
 
-    md_files = sorted(docs_dir.glob('*.md'))
+    # README.md is meta-documentation (describes the docs system itself) and
+    # may contain example doctest tags that should not be extracted as tests.
+    md_files = sorted(
+        p for p in docs_dir.glob('*.md')
+        if p.name.upper() != 'README.MD'
+    )
     if not md_files:
         print(f"No .md files found under {docs_dir}", file=sys.stderr)
         return 0

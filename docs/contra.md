@@ -151,7 +151,8 @@ where the wrapper guarantees safe writes.
 A base-typed pointer can be passed where a more-specific Sink is expected,
 because the writer fills exactly the same bytes (same-sizeof inheritance).
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -179,7 +180,8 @@ int main() {
 Even though `Derived` adds no fields (same sizeof), it is a *subtype* of
 `Base`, not a supertype. Passing it as `Sink(Base)` is rejected.
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: could not convert                    <- GCC
 // MATCH-ERROR-TEXT: no matching function                 <- GCC alternate
 // MATCH-ERROR-TEXT: no instance of overloaded function   <- MSVC

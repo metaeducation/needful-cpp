@@ -129,11 +129,17 @@ else()
 endif()
 
 set(NEGATIVE_TESTS
-    # All negative tests have been migrated into docs/*.md as negative-test
-    # code blocks.  They are extracted at configure time by extract-doctests.py
-    # and registered below via file(GLOB ...).  To add a new negative test,
-    # add a ```cpp negative-test block to the appropriate docs page rather
-    # than creating a standalone file here.
+    # All negative tests live in docs/*.md as tagged fenced blocks:
+    #
+    #   <!-- doctest: negative-test -->
+    #   ```cpp
+    #   ...
+    #   ```
+    #
+    # They are extracted at configure time by extract-doctests.py and
+    # registered below via file(GLOB ...).  To add a new negative test,
+    # add a tagged block to the appropriate docs page rather than creating
+    # a standalone file here.
 )
 
 foreach(test_name ${NEGATIVE_TESTS})

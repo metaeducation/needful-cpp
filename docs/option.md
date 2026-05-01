@@ -66,7 +66,8 @@ boolean or `Result(T)`.
 
 ### Basic usage
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -86,7 +87,8 @@ int main() {
 
 ### Implicit unwrap to `T` is a compile error
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: cannot convert        <- GCC, MSVC
 // MATCH-ERROR-TEXT: no viable conversion  <- Clang
 #define NEEDFUL_CPP_ENHANCED  1
@@ -103,7 +105,8 @@ int main() {
 
 ### Implicit conversion to `bool` is a compile error
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: cannot convert        <- GCC, MSVC
 // MATCH-ERROR-TEXT: no viable conversion  <- Clang
 #define NEEDFUL_CPP_ENHANCED  1

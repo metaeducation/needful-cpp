@@ -93,7 +93,8 @@ int* find_nonzero(int* arr, int len) {
 
 ### Comment macros compile and are no-ops at runtime
 
-```cpp positive-test
+<!-- doctest: positive-test -->
+```cpp
 #define NEEDFUL_CPP_ENHANCED  1
 #include <cassert>
 #include "needful.h"
@@ -119,7 +120,8 @@ int main() {
 
 ### `possibly()` requires a bool-convertible expression
 
-```cpp negative-test
+<!-- doctest: negative-test -->
+```cpp
 // MATCH-ERROR-TEXT: must be explicitly convertible to bool  <- needful static_assert
 // MATCH-ERROR-TEXT: static assertion failed                 <- GCC/Clang
 #define NEEDFUL_CPP_ENHANCED  1
