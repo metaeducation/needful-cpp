@@ -1,0 +1,29 @@
+title: Needful
+description: >
+  Single-header C library with Rust-grade safety when built as C++.
+  Zero runtime cost, no dependencies, no tools beyond your compiler.
+
+url: "https://needful.metaeducation.com"
+
+# Use just-the-docs theme for clean technical documentation.
+# https://just-the-docs.com
+remote_theme: just-the-docs/just-the-docs@v0.10.0
+
+# Syntax highlighting
+highlighter: rouge
+
+# Show the "Edit this page on GitHub" link
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/metaeducation/needful-enhanced"
+gh_edit_branch: "master"
+gh_edit_view_mode: "edit"
+
+# Navigation order is set in each page's front matter via nav_order.
+# See: https://just-the-docs.com/docs/navigation-structure/
+
+aux_links:
+  "GitHub":
+    - "https://github.com/metaeducation/needful-enhanced"
+  "needful.h (raw)":
+    - "https://raw.githubusercontent.com/metaeducation/ren-c/master/src/include/needful.h"

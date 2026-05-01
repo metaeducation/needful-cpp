@@ -1,0 +1,136 @@
+---
+layout: default
+title: Comment Macros
+nav_order: 8
+permalink: /comments
+---
+
+# Comment Macros — Executable Documentation
+
+Needful provides a family of macros that replace prose comments with
+compile-checked expressions. In C, they are all no-ops. In C++ builds, they
+verify that the expression inside is well-formed — so if you rename a
+variable, the comment breaks at compile time instead of silently going stale.
+
+## The Problem With Prose Comments
+
+```c
+int i = Get_Integer(...);  // i may be < 0
+```
+
+If `i` is later renamed, the comment becomes wrong silently. The expression
+`i < 0` is not checked by the compiler.
+
+## The Needful Alternative
+
+```c
+int i = Get_Integer(...);
+possibly(i < 0);   // if i is renamed, this becomes a compile error
+```
+
+`possibly()` is a no-op at runtime — it compiles away completely. But in C++
+builds, it static-asserts that the expression has a type convertible to
+`bool`. If `i` is renamed and the expression no longer compiles, CI catches it.
+
+## Statement-Scope Macros
+
+These go inside function bodies:
+
+| Macro | Meaning | Constraint |
+|---|---|---|
+| `possibly(cond)` | This *might* be true | `cond` must be bool-convertible |
+| `definitely(cond)` | This is *always* true (not worth asserting at runtime) | `cond` must be bool-convertible |
+| `impossible(cond)` | This can *never* be true | `cond` must be bool-convertible |
+| `unnecessary(expr)` | This code exists but is not needed | `expr` must be valid |
+| `dont(expr)` | Do not do this; here's what you'd write if you did | `expr` must be valid |
+| `cant(expr)` | Would like to do this; current limitations prevent it | `expr` must be valid |
+| `heeded(expr)` | This looks stray but its side effect is intentional | expression is evaluated |
+
+## Global-Scope Macros
+
+For use outside function bodies (at file or namespace scope). They are
+uppercased and have slightly different expansion:
+
+| Macro | Meaning |
+|---|---|
+| `POSSIBLY(cond)` | No-op at global scope |
+| `DEFINITELY(cond)` | Static assertion that `cond` is true |
+| `IMPOSSIBLE(cond)` | Static assertion that `cond` is false |
+| `UNNECESSARY(expr)` | No-op at global scope |
+| `DONT(expr)` | No-op at global scope |
+| `CANT(expr)` | No-op at global scope |
+
+## `STATIC_ASSERT` and Friends
+
+```c
+STATIC_ASSERT(sizeof(int) == 4);          // C++ build: compile error if false
+STATIC_ASSERT_LVALUE(variable);           // error if variable is not an lvalue
+STATIC_IGNORE(expr);                      // validate expression, discard result
+STATIC_FAIL(some_identifier_message);     // always fails (marks unreachable paths)
+```
+
+## Example: Self-Documenting Loop
+
+```c
+int* find_nonzero(int* arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        possibly(arr[i] == 0);          // some elements may be zero
+        if (arr[i] != 0)
+            return &arr[i];
+    }
+    impossible(len > 0);                // we checked every element
+    return nullptr;
+}
+```
+
+## Related
+
+- [FAQ: What's the difference between `definitely` and `STATIC_ASSERT`?](/faq#definitely-vs-static-assert)
+
+---
+
+## Compile-Time Tests
+
+### Comment macros compile and are no-ops at runtime
+
+```cpp positive-test
+#define NEEDFUL_CPP_ENHANCED  1
+#include <cassert>
+#include "needful.h"
+
+int find_first_nonzero(int* arr, int len) {
+    for (int i = 0; i < len; ++i) {
+        possibly(arr[i] == 0);       // some elements may be zero
+        if (arr[i] != 0)
+            return arr[i];
+    }
+    impossible(len > 0);             // only reached when all are zero
+    return 0;
+}
+
+int main() {
+    int a[] = {0, 0, 7, 3};
+    assert(find_first_nonzero(a, 4) == 7);
+    int b[] = {0, 0};
+    assert(find_first_nonzero(b, 2) == 0);
+    return 0;
+}
+```
+
+### `possibly()` requires a bool-convertible expression
+
+```cpp negative-test
+// MATCH-ERROR-TEXT: must be explicitly convertible to bool  <- needful static_assert
+// MATCH-ERROR-TEXT: static assertion failed                 <- GCC/Clang
+#define NEEDFUL_CPP_ENHANCED  1
+#include <cassert>
+#include "needful.h"
+
+struct NotBool { int x; };
+
+int main() {
+    NotBool nb = {5};
+    possibly(nb);  // ERROR: NotBool has no operator bool
+    return 0;
+}
+```

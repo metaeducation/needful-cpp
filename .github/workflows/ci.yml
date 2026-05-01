@@ -1,0 +1,165 @@
+#
+# File: %ci.yml
+#
+#=============================================================================#
+#
+# Runs needful-enhanced tests against needful.h fetched from Ren-C master.
+#
+# Positive tests (tests/positive/) are compiled as executables and run;
+# they must exit 0.  Negative tests (tests/negative/) are fed directly to
+# the compiler and must FAIL to compile (enforced via CTest WILL_FAIL).
+#
+# needful.h is fetched from Ren-C master at the start of each job and
+# placed one directory above the repo checkout, which is where the
+# CMakeLists.txt expects to find it by default.
+#
+# The raw GitHub URL for needful.h is:
+# https://raw.githubusercontent.com/metaeducation/ren-c/master/src/include/needful.h
+#
+
+name: needful-enhanced CI
+
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:  # Allows running this workflow manually from Actions tab
+
+
+defaults:
+  run:
+    shell: bash  # Use bash on all platforms, including Windows
+
+
+jobs:
+  tests:
+
+    strategy:
+      fail-fast: false  # Run all matrix entries even if one fails
+      matrix:
+        include:
+
+          - os: ubuntu-latest
+            label: linux-gcc
+            cxx: g++
+            cmake-generator: Unix Makefiles
+            msvc: false
+
+          - os: ubuntu-latest
+            label: linux-clang
+            cxx: clang++
+            cmake-generator: Unix Makefiles
+            msvc: false
+
+          - os: macos-latest
+            label: macos-clang
+            cxx: clang++
+            cmake-generator: Unix Makefiles
+            msvc: false
+
+          - os: windows-2022
+            label: windows-msvc
+            cxx: cl
+            cmake-generator: NMake Makefiles
+            msvc: true
+
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.label }}
+
+
+    steps:
+
+
+  #====# CHECKOUT STEPS #=====================================================#
+
+    # https://github.com/actions/checkout
+    #
+    - uses: actions/checkout@v5
+
+
+    # needful.h lives one level above the needful-enhanced repo checkout.
+    # dirname strips the last path component: .../needful-enhanced => .../
+    #
+    - name: Fetch needful.h from Ren-C master
+      run: |
+        NEEDFUL_H_DIR="$(dirname "$GITHUB_WORKSPACE")"
+        curl -fL \
+          "https://raw.githubusercontent.com/metaeducation/ren-c/master/src/include/needful.h" \
+          -o "$NEEDFUL_H_DIR/needful.h"
+        echo "Fetched needful.h to $NEEDFUL_H_DIR/needful.h"
+        echo "NEEDFUL_H_DIR=$NEEDFUL_H_DIR" >> "$GITHUB_ENV"
+
+
+  #====# TOOLCHAIN SETUP #=====================================================#
+
+    # By default you can't call MSVC from the command line; this action sets
+    # up the environment.
+    #
+    # https://github.com/ilammy/msvc-dev-cmd
+    #
+    # See Ren-C README: !!! IMPORTANT - Untrusted Actions, Use Audited Hash !!!
+    #
+    - name: Enable MSVC CL.EXE and Build Tools
+      if: matrix.msvc
+      uses: ilammy/msvc-dev-cmd@aa2e60900e4cc1eda092dd8f53dab2b32efeacf5
+
+
+    # Using bash means a symlink /usr/bin/link gets in the path before
+    # MSVC's LINK.EXE.  Move it aside so the linker is found correctly.
+    #
+    # https://github.com/ilammy/msvc-dev-cmd/issues/25
+    #
+    - name: Move GNU link Aside So MSVC LINK.EXE Is Found
+      if: matrix.msvc
+      run: mv /usr/bin/link.exe /usr/bin/gnu-link
+
+
+  #====# BUILD AND TEST STEPS #================================================#
+
+    - name: Configure Tests With CMake
+      working-directory: tests
+      run: |
+        cmake -B build \
+          -G "${{ matrix.cmake-generator }}" \
+          -DCMAKE_CXX_COMPILER="${{ matrix.cxx }}" \
+          -DNEEDUL_H_DIR="$NEEDFUL_H_DIR"
+
+
+    # Positive tests are compiled to binaries here; negative tests are
+    # compiled (and expected to fail) during ctest itself, not here.
+    #
+    - name: Build Positive Tests
+      working-directory: tests
+      run: cmake --build build
+
+
+    # --output-on-failure prints compiler output for any failing negative test
+    # that unexpectedly succeeded in compiling.
+    #
+    - name: Run All Tests (CTest)
+      working-directory: tests
+      run: ctest --test-dir build -V --output-on-failure
+
+
+    # Run the Python negative-test driver in --strict mode.  This adds the
+    # EXPECT-ERROR phrase check that CTest's WILL_FAIL cannot do: it verifies
+    # that each negative test failed for the *right* reason, not due to a
+    # typo in the test file.  Any test lacking an EXPECT-ERROR comment is
+    # also a hard failure in strict mode.
+    #
+    # Pass --extra-dir to also check any negative doctests extracted from docs/.
+    #
+    - name: Verify Negative Tests Failed For The Right Reason
+      working-directory: tests
+      run: |
+        EXTRA_ARGS=""
+        if [ -d doctest-extracted/negative ]; then
+          EXTRA_ARGS="--extra-dir doctest-extracted/negative"
+        fi
+        python run-negative-tests.py --match-error-text --needful-dir "$NEEDFUL_H_DIR" $EXTRA_ARGS

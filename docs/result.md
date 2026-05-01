@@ -1,0 +1,164 @@
+---
+layout: default
+title: Result(T)
+nav_order: 4
+permalink: /result
+---
+
+# `Result(T)` — Cooperative Error Propagation
+
+`Result(T)` multiplexes an error and a return value using thread-local state,
+giving C code a Rust-inspired error handling style without exceptions or
+`setjmp`/`longjmp`.
+
+## The Pattern
+
+Instead of this:
+
+```c
+Error* Some_Func(int* result, int x) {
+    if (x < 304)
+        return fail("the value is too small");
+    *result = x + 20;
+    return nullptr;
+}
+
+Error* Other_Func(int* result) {
+    int y;
+    Error* e = Some_Func(&y, 1000);
+    if (e) return e;
+    // ...manual propagation repeated for every call...
+}
+```
+
+You write this:
+
+```c
+Result(int) Some_Func(int x) {
+    if (x < 304)
+        return fail("the value is too small");
+    return x + 20;
+}
+
+Result(int) Other_Func(void) {
+    trap (int y = Some_Func(1000));
+    assert(y == 1020);
+
+    trap (int z = Some_Func(10));   // auto-propagates on error
+    return z;
+}
+```
+
+## Error Handling Vocabulary
+
+| Macro | Meaning |
+|---|---|
+| `return fail(...)` | Return a failure, storing the error in thread-local state |
+| `trap (stmt)` | Execute `stmt`; if it failed, propagate the failure upward |
+| `require (stmt)` | Like `trap`, but panics rather than propagating |
+| `assume (stmt)` | Execute `stmt`; assert no failure occurred (debug) |
+| `except (Error* e) { }` | Catch a failure into a scoped variable |
+| `rescue (expr)` | Evaluate `expr` and return the failure (or null if none) |
+| `panic(...)` | Abort immediately; never returns |
+
+## The `except` Syntax
+
+The most ergonomic pattern — `except` attaches naturally to an expression and
+allows an `else` clause:
+
+```c
+int result = Some_Func(30) except (Error* e) {
+    printf("caught: %s\n", e->message);
+    result = -1;
+} else {
+    printf("success!\n");
+}
+```
+
+This is standard C99. `except` expands into a `for` loop that runs exactly
+once, scoping the error variable to the block.
+
+## Setup: Result Hooks
+
+`Result(T)` needs to know how to store, retrieve, and clear the thread-local
+error state. You provide this by defining hook functions or macros:
+
+```c
+ErrorType* Needful_Test_And_Clear_Failure(void);
+ErrorType* Needful_Get_Failure(void);
+void       Needful_Set_Failure(ErrorType* error);
+void       Needful_Panic_Abruptly(ErrorType* error);
+void       Needful_Assert_Not_Failing(void);
+```
+
+For quick prototyping, define `NEEDFUL_DECLARE_RESULT_HOOKS 1` **before**
+including `needful.h` to get a built-in `const char*`-based implementation:
+
+```c
+#define NEEDFUL_DECLARE_RESULT_HOOKS 1
+#include "needful.h"
+```
+
+> **Note:** `NEEDFUL_DECLARE_RESULT_HOOKS` defines storage and implementations
+> inline. Only define it in **one** translation unit per program.
+
+## Related
+
+- [`Option(T)`](/option) — nullable values without an error
+- [FAQ: Why does `fail(...)` disable the int-conversion warning?](/faq#int-conversion-warning)
+
+---
+
+## Compile-Time Tests
+
+### Basic `trap` / `fail` / `assume` usage
+
+```cpp positive-test
+#define NEEDFUL_CPP_ENHANCED  1
+#define NEEDFUL_DECLARE_RESULT_HOOKS  1
+#include <cassert>
+#include "needful.h"
+
+Result(int) double_if_positive(int x) {
+    if (x < 0)
+        return fail("negative input");
+    return x * 2;
+}
+
+Result(int) run(void) {
+    trap (int a = double_if_positive(10));
+    assert(a == 20);
+    trap (int b = double_if_positive(5));
+    assert(b == 10);
+    return 42;
+}
+
+int main() {
+    assume (run());
+    return 0;
+}
+```
+
+### Discarding a `Result(T)` without handling it is a compile error
+
+```cpp negative-test
+// MATCH-ERROR-TEXT: cannot convert   <- GCC, MSVC
+// MATCH-ERROR-TEXT: no viable conversion  <- Clang
+// MATCH-ERROR-TEXT: cannot initialize  <- GCC alternate
+#define NEEDFUL_CPP_ENHANCED  1
+#define NEEDFUL_DECLARE_RESULT_HOOKS  1
+#include <cassert>
+#include "needful.h"
+
+Result(int) compute(int x) {
+    if (x < 0)
+        return fail("negative");
+    return x * 2;
+}
+
+int main() {
+    int n = compute(5);  // ERROR: Result(int) is not implicitly int
+    (void)n;
+    return 0;
+}
+```
