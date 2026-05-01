@@ -1,9 +1,56 @@
-# Needful: The library that does nothing in your C programs (and you NEED it!)
+# needful-enhanced
 
-These files are being factored out of Ren-C as as an independent MIT-licensed
-library called "Needful".  Its goal is to help people to use C++ compilers to
-verify properties of C codebases...while still being able to compile that code
-with a C compiler.
+C++ compile-time type enforcement for
+[needful.h](https://needful.metaeducation.com).
 
-Migration to a separate repository with its own test suite and documentation is
-a work in progress.
+Full documentation: **[needful.metaeducation.com](https://needful.metaeducation.com)**
+
+---
+
+## If you found this directory on your filesystem
+
+This directory was placed here to enable `NEEDFUL_CPP_ENHANCED` for the
+project that owns the `needful.h` next to it. That project's build setup
+(a script, CMake, or a manual step) cloned it here specifically for
+development-time type checking.
+
+It is intentionally **not committed** to the parent project's repository —
+you will likely find it listed in that project's `.gitignore`. It is a
+separate git repository that just happens to live alongside `needful.h`.
+
+Setting it up in a different project, or understanding what it does:
+→ [needful.metaeducation.com/setup](https://needful.metaeducation.com/setup)
+
+---
+
+## What this repository contains
+
+When `#define NEEDFUL_CPP_ENHANCED 1` is set, `needful.h` includes `.hpp`
+files from this directory. Those files replace Needful's transparent C macros
+with C++ wrapper types that enforce type safety at compile time:
+
+- `Need(T)` blocks null assignments and boolean coercion
+- `Option(T)` requires explicit unwrapping
+- `Result(T)` cannot be silently discarded
+- `Sink(T)` / `Init(T)` enforce contravariant output parameter rules
+- The cast family calls hooks instead of compiling away
+- `known()` asserts the type of an expression inside macros
+
+In a plain C build (or a C++ build without `NEEDFUL_CPP_ENHANCED`), none of
+this directory is used and none of it is needed.
+
+## Repository layout
+
+```
+docs/          Web documentation (needful.metaeducation.com)
+tests/         Positive and negative compile-time tests
+tools/         extract-doctests.py — docs-as-tests infrastructure
+.github/       CI across GCC, Clang, MSVC
+needful-*.hpp  The enhancement headers included by needful.h
+```
+
+## needful.h
+
+`needful.h` is currently maintained in the
+[Ren-C repository](https://github.com/metaeducation/ren-c/blob/master/src/include/needful.h).
+A standalone distribution is planned.
